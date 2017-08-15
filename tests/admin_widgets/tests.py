@@ -572,18 +572,26 @@ class ManyToManyRawIdWidgetTest(TestCase):
         rel = Band._meta.get_field('members').remote_field
 
         w = widgets.ManyToManyRawIdWidget(rel, widget_admin_site)
+        self.maxDiff = None
         self.assertHTMLEqual(
-            w.render('test', [m1.pk, m2.pk], attrs={}), (
-                '<input type="text" name="test" value="%(m1pk)s,%(m2pk)s" class="vManyToManyRawIdAdminField" />'
-                '<a href="/admin_widgets/member/" class="related-lookup" id="lookup_id_test" title="Lookup"></a>'
-            ) % {'m1pk': m1.pk, 'm2pk': m2.pk}
+            w.render('test', [m1.pk, m2.pk], attrs={}),
+            '<input type="text" name="test" value="{m1.pk},{m2.pk}" class="vManyToManyRawIdAdminField" />'
+            '<a href="/admin_widgets/member/" class="related-lookup" id="lookup_id_test" title="Lookup"></a>'
+            '<dl class="m2m_raw_id_field_dict">'
+            '<dt>{m1.pk}</dt><dd><a href="/admin_widgets/member/{m1.pk}/change/">{m1}</a></dd>'
+            '<dt>{m2.pk}</dt><dd><a href="/admin_widgets/member/{m2.pk}/change/">{m2}</a></dd>'
+            '</dl>'
+            .format(m1=m1, m2=m2)
         )
 
         self.assertHTMLEqual(
-            w.render('test', [m1.pk]), (
-                '<input type="text" name="test" value="%(m1pk)s" class="vManyToManyRawIdAdminField">'
-                '<a href="/admin_widgets/member/" class="related-lookup" id="lookup_id_test" title="Lookup"></a>'
-            ) % {'m1pk': m1.pk}
+            w.render('test', [m1.pk]),
+            '<input type="text" name="test" value="{m1.pk}" class="vManyToManyRawIdAdminField">'
+            '<a href="/admin_widgets/member/" class="related-lookup" id="lookup_id_test" title="Lookup"></a>'
+            '<dl class="m2m_raw_id_field_dict">'
+            '<dt>{m1.pk}</dt><dd><a href="/admin_widgets/member/{m1.pk}/change/">{m1}</a></dd>'
+            '</dl>'
+            .format(m1=m1)
         )
 
     def test_m2m_related_model_not_in_admin(self):
@@ -599,12 +607,16 @@ class ManyToManyRawIdWidgetTest(TestCase):
         w = widgets.ManyToManyRawIdWidget(rel, widget_admin_site)
         self.assertHTMLEqual(
             w.render('company_widget1', [c1.pk, c2.pk], attrs={}),
-            '<input type="text" name="company_widget1" value="%(c1pk)s,%(c2pk)s" />' % {'c1pk': c1.pk, 'c2pk': c2.pk}
+            '<input type="text" name="company_widget1" value="{c1.id},{c2.id}" />'
+            '<dl class="m2m_raw_id_field_dict"><dt>{c1.id}</dt><dd>{c1}</dd><dt>{c2.id}</dt><dd>{c2}</dd></dl>'
+            .format(c1=c1, c2=c2)
         )
 
         self.assertHTMLEqual(
             w.render('company_widget2', [c1.pk]),
-            '<input type="text" name="company_widget2" value="%(c1pk)s" />' % {'c1pk': c1.pk}
+            '<input type="text" name="company_widget2" value="{c1.id}" />'
+            '<dl class="m2m_raw_id_field_dict"><dt>{c1.id}</dt><dd>{c1}</dd></dl>'
+            .format(c1=c1)
         )
 
 
