@@ -108,13 +108,20 @@ li, dt, dd {
     line-height: 20px;
 }
 
+dl.m2m_raw_id_field_dict {
+    max-height: 10vh;
+    overflow: scroll;
+}
+
 dt {
     font-weight: bold;
-    margin-top: 4px;
+    float: left;
+    margin-right: 10px;
 }
 
 dd {
     margin-left: 0;
+    clear: right;
 }
 
 form {

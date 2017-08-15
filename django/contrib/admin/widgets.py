@@ -238,8 +238,17 @@ class ManyToManyRawIdWidget(RawIdWidget):
     def url_parameters(self):
         return self.base_url_parameters()
 
-    def label_and_url_for_value(self, value):
-        return '', ''
+    def labels_and_urls_for_value(self, value):
+        key = self.rel.get_related_field().name
+        objs = self.rel.model._default_manager.using(self.db).filter(
+            **{key + '__in': value})
+
+        labels_and_urls = []
+        for obj in objs:
+            url = self._get_url_for_raw_id_object(obj)
+            labels_and_urls.append((obj.id, Truncator(obj).words(14, truncate='...'), url))
+
+        return labels_and_urls
 
     def value_from_datadict(self, data, files, name):
         value = data.get(name)
