@@ -135,18 +135,26 @@ def url_params_from_lookup_dict(lookups):
     return params
 
 
-class ForeignKeyRawIdWidget(forms.TextInput):
-    """
-    A Widget for displaying ForeignKeys in the "raw_id" interface rather than
-    in a <select> box.
-    """
-    template_name = 'admin/widgets/foreign_key_raw_id.html'
-
+class RawIdWidget(forms.TextInput):
     def __init__(self, rel, admin_site, attrs=None, using=None):
         self.rel = rel
         self.admin_site = admin_site
         self.db = using
         super().__init__(attrs)
+
+    def _get_url_for_raw_id_object(self, obj):
+            try:
+                url = reverse(
+                    '%s:%s_%s_change' % (
+                        self.admin_site.name,
+                        obj._meta.app_label,
+                        obj._meta.object_name.lower(),
+                    ),
+                    args=(obj.pk,)
+                )
+            except NoReverseMatch:
+                url = ''  # Admin not registered for target model.
+            return url
 
     def get_context(self, name, value, attrs):
         context = super().get_context(name, value, attrs)
@@ -168,10 +176,6 @@ class ForeignKeyRawIdWidget(forms.TextInput):
                 )
             context['related_url'] = mark_safe(related_url)
             context['link_title'] = _('Lookup')
-            # The JavaScript code looks for this class.
-            context['widget']['attrs'].setdefault('class', 'vForeignKeyRawIdAdminField')
-        if context['widget']['value']:
-            context['link_label'], context['link_url'] = self.label_and_url_for_value(value)
         return context
 
     def base_url_parameters(self):
@@ -179,6 +183,23 @@ class ForeignKeyRawIdWidget(forms.TextInput):
         if callable(limit_choices_to):
             limit_choices_to = limit_choices_to()
         return url_params_from_lookup_dict(limit_choices_to)
+
+
+class ForeignKeyRawIdWidget(RawIdWidget):
+    """
+    A Widget for displaying ForeignKeys in the "raw_id" interface rather than
+    in a <select> box.
+    """
+    template_name = 'admin/widgets/foreign_key_raw_id.html'
+
+    def get_context(self, name, value, attrs):
+        context = super().get_context(name, value, attrs)
+        rel_to = self.rel.model
+        if rel_to in self.admin_site._registry:
+            context['widget']['attrs'].setdefault('class', 'vForeignKeyRawIdAdminField')
+        if context['widget']['value']:
+            context['link_label'], context['link_url'] = self.label_and_url_for_value(value)
+        return context
 
     def url_parameters(self):
         from django.contrib.admin.views.main import TO_FIELD_VAR
@@ -193,22 +214,12 @@ class ForeignKeyRawIdWidget(forms.TextInput):
         except (ValueError, self.rel.model.DoesNotExist):
             return '', ''
 
-        try:
-            url = reverse(
-                '%s:%s_%s_change' % (
-                    self.admin_site.name,
-                    obj._meta.app_label,
-                    obj._meta.object_name.lower(),
-                ),
-                args=(obj.pk,)
-            )
-        except NoReverseMatch:
-            url = ''  # Admin not registered for target model.
+        url = self._get_url_for_raw_id_object(obj)
 
         return Truncator(obj).words(14, truncate='...'), url
 
 
-class ManyToManyRawIdWidget(ForeignKeyRawIdWidget):
+class ManyToManyRawIdWidget(RawIdWidget):
     """
     A Widget for displaying ManyToMany ids in the "raw_id" interface rather than
     in a <select multiple> box.
@@ -220,6 +231,8 @@ class ManyToManyRawIdWidget(ForeignKeyRawIdWidget):
         if self.rel.model in self.admin_site._registry:
             # The related object is registered with the same AdminSite
             context['widget']['attrs']['class'] = 'vManyToManyRawIdAdminField'
+        if context['widget']['value']:
+            context['link_labels_and_urls'] = self.labels_and_urls_for_value(value)
         return context
 
     def url_parameters(self):
